@@ -18,10 +18,10 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Set Azure Subscription
-        run: az account set --subscription $(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .subscriptionId)
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
@@ -48,7 +48,6 @@ jobs:
               echo "US_IP=$US_IP" >> $GITHUB_ENV
               echo "IND_IP=$IND_IP" >> $GITHUB_ENV
               echo "AUS_IP=$AUS_IP" >> $GITHUB_ENV
-              echo "All IPs acquired"
               break
             fi
 
