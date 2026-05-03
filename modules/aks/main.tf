@@ -1,8 +1,8 @@
 resource "azurerm_kubernetes_cluster" "aks" {
-  name                = "aks-cluster"
+  name                = var.cluster_name
   location            = var.location
   resource_group_name = var.resource_group_name
-  dns_prefix          = "aks"
+  dns_prefix          = var.cluster_name
 
   default_node_pool {
     name       = "default"
@@ -12,5 +12,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   identity {
     type = "SystemAssigned"
+  }
+
+  network_profile {
+    network_plugin = "azure"
   }
 }
