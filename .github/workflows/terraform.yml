@@ -20,6 +20,12 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Set Azure Subscription
+        run: az account set --subscription $(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .subscriptionId)
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
       - name: Get AKS Credentials (All Regions)
         run: |
           az aks get-credentials --resource-group rg-aks-multiregion --name aks-us --overwrite-existing
@@ -31,18 +37,33 @@ jobs:
           az aks get-credentials --resource-group rg-aks-multiregion --name aks-aus --overwrite-existing
           kubectl config rename-context $(kubectl config current-context) aks-aus
 
-      - name: Fetch LoadBalancer IPs per region
+      - name: Wait for LoadBalancer IPs
         run: |
-          US_IP=$(kubectl --context=aks-us get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          IND_IP=$(kubectl --context=aks-ind get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          AUS_IP=$(kubectl --context=aks-aus get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          for i in {1..20}; do
+            US_IP=$(kubectl --context=aks-us get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            IND_IP=$(kubectl --context=aks-ind get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            AUS_IP=$(kubectl --context=aks-aus get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 
-          echo "US_IP=$US_IP" >> $GITHUB_ENV
-          echo "IND_IP=$IND_IP" >> $GITHUB_ENV
-          echo "AUS_IP=$AUS_IP" >> $GITHUB_ENV
+            if [[ -n "$US_IP" && -n "$IND_IP" && -n "$AUS_IP" ]]; then
+              echo "US_IP=$US_IP" >> $GITHUB_ENV
+              echo "IND_IP=$IND_IP" >> $GITHUB_ENV
+              echo "AUS_IP=$AUS_IP" >> $GITHUB_ENV
+              echo "All IPs acquired"
+              break
+            fi
+
+            echo "Waiting for LoadBalancer IPs..."
+            sleep 15
+          done
 
       - name: Terraform Init
         run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
 
       - name: Terraform Apply (Multi-region endpoints)
         run: |
