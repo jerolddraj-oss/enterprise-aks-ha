@@ -4,7 +4,12 @@ metadata:
   name: aks-ingress
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
+  tls:
+    - hosts:
+        - aks-app.example.com
+      secretName: aks-tls
   rules:
     - host: aks-app.example.com
       http:
