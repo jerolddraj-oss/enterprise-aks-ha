@@ -3,32 +3,48 @@ resource "azurerm_network_security_group" "aks_nsg" {
   location            = var.location
   resource_group_name = var.resource_group_name
 
+  # Allow Azure Load Balancer health probes
   security_rule {
-    name                       = "Allow-HTTP"
+    name                       = "Allow-AzureLoadBalancer"
     priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
-    protocol                   = "Tcp"
+    protocol                   = "*"
     source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "Internet"
+    destination_port_range     = "*"
+    source_address_prefix      = "AzureLoadBalancer"
     destination_address_prefix = "*"
   }
 
+  # Allow HTTPS only from Traffic Manager (or Front Door if used later)
   security_rule {
-    name                       = "Allow-HTTPS"
+    name                       = "Allow-HTTPS-From-TM"
     priority                   = 110
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "443"
-    source_address_prefix      = "Internet"
+    source_address_prefix      = "AzureTrafficManager"
     destination_address_prefix = "*"
   }
 
+  # Optional: allow internal VNet communication
   security_rule {
-    name                       = "Deny-All"
+    name                       = "Allow-VNet-Inbound"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "VirtualNetwork"
+    destination_address_prefix = "VirtualNetwork"
+  }
+
+  # Deny everything else inbound
+  security_rule {
+    name                       = "Deny-All-Inbound"
     priority                   = 4096
     direction                  = "Inbound"
     access                     = "Deny"
@@ -37,6 +53,19 @@ resource "azurerm_network_security_group" "aks_nsg" {
     destination_port_range     = "*"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
+  }
+
+  # Allow outbound to Internet (required for AKS nodes)
+  security_rule {
+    name                       = "Allow-Internet-Outbound"
+    priority                   = 100
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "Internet"
   }
 }
 
