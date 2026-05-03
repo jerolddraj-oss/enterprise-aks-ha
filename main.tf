@@ -7,11 +7,18 @@ resource "azurerm_resource_group" "rg" {
   location = "East US"
 }
 
+module "networking" {
+  source              = "./modules/networking"
+  location            = "East US"
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
 module "aks_us" {
   source              = "./modules/aks"
   cluster_name        = "aks-us"
   location            = "East US"
   resource_group_name = azurerm_resource_group.rg.name
+  subnet_id           = module.networking.spoke_subnet_id
 }
 
 module "aks_ind" {
@@ -19,6 +26,7 @@ module "aks_ind" {
   cluster_name        = "aks-ind"
   location            = "Central India"
   resource_group_name = azurerm_resource_group.rg.name
+  subnet_id           = module.networking.spoke_subnet_id
 }
 
 module "aks_aus" {
@@ -26,4 +34,5 @@ module "aks_aus" {
   cluster_name        = "aks-aus"
   location            = "Australia East"
   resource_group_name = azurerm_resource_group.rg.name
+  subnet_id           = module.networking.spoke_subnet_id
 }
