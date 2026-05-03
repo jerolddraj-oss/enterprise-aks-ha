@@ -20,19 +20,33 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Get AKS Credentials
-        run: az aks get-credentials --resource-group rg-aks-multiregion --name aks-us --overwrite-existing
-
-      - name: Get LoadBalancer IP
-        id: lb
+      - name: Get AKS Credentials (All Regions)
         run: |
-          chmod +x scripts/get_lb_ip.sh
-          OUTPUT=$(./scripts/get_lb_ip.sh)
-          echo "$OUTPUT"
-          echo "$OUTPUT" >> $GITHUB_ENV
+          az aks get-credentials --resource-group rg-aks-multiregion --name aks-us --overwrite-existing
+          kubectl config rename-context $(kubectl config current-context) aks-us
+
+          az aks get-credentials --resource-group rg-aks-multiregion --name aks-ind --overwrite-existing
+          kubectl config rename-context $(kubectl config current-context) aks-ind
+
+          az aks get-credentials --resource-group rg-aks-multiregion --name aks-aus --overwrite-existing
+          kubectl config rename-context $(kubectl config current-context) aks-aus
+
+      - name: Fetch LoadBalancer IPs per region
+        run: |
+          US_IP=$(kubectl --context=aks-us get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          IND_IP=$(kubectl --context=aks-ind get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          AUS_IP=$(kubectl --context=aks-aus get svc aks-app-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+          echo "US_IP=$US_IP" >> $GITHUB_ENV
+          echo "IND_IP=$IND_IP" >> $GITHUB_ENV
+          echo "AUS_IP=$AUS_IP" >> $GITHUB_ENV
 
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve -var "us_endpoint=${{ env.LB_IP }}" -var "ind_endpoint=${{ env.LB_IP }}" -var "aus_endpoint=${{ env.LB_IP }}"
+      - name: Terraform Apply (Multi-region endpoints)
+        run: |
+          terraform apply -auto-approve \
+            -var "us_endpoint=${{ env.US_IP }}" \
+            -var "ind_endpoint=${{ env.IND_IP }}" \
+            -var "aus_endpoint=${{ env.AUS_IP }}"
