@@ -13,3 +13,8 @@ variable "cluster_name" {
   type        = string
   default     = "aks-cluster"
 }
+
+variable "subnet_id" {
+  description = "Subnet ID for AKS"
+  type        = string
+}
