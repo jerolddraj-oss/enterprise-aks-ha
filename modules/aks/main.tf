@@ -18,4 +18,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
   network_profile {
     network_plugin = "azure"
   }
+
+  api_server_access_profile {
+    enable_private_cluster = true
+  }
+
+  role_based_access_control_enabled = true
 }
